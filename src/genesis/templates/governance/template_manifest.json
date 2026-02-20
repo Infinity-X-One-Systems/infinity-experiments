@@ -1,0 +1,11 @@
+{
+  "name": "governance",
+  "description": "Governance document scaffold for a new policy area",
+  "version": "1.0.0",
+  "files": [
+    {
+      "path": "GOVERNANCE_${MODULE_NAME}.md",
+      "template": "GOVERNANCE.md.tpl"
+    }
+  ]
+}

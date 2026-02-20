@@ -1,0 +1,23 @@
+{
+  "name": "python_module",
+  "description": "Standard 110%-compliant Python module scaffold",
+  "version": "1.0.0",
+  "files": [
+    {
+      "path": "${MODULE_NAME}/__init__.py",
+      "template": "init.py.tpl"
+    },
+    {
+      "path": "${MODULE_NAME}/main.py",
+      "template": "main.py.tpl"
+    },
+    {
+      "path": "${MODULE_NAME}/README.md",
+      "template": "README.md.tpl"
+    },
+    {
+      "path": "tests/test_${MODULE_NAME}.py",
+      "template": "test_module.py.tpl"
+    }
+  ]
+}
