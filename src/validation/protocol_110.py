@@ -23,7 +23,7 @@ import json
 import logging
 import re
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -44,6 +44,7 @@ log = logging.getLogger("protocol_110")
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Finding:
     """A single validation finding against a specific gate."""
@@ -60,9 +61,7 @@ class ValidationReport:
     """Aggregated report for a full validation run."""
 
     root: str
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(tz=timezone.utc).isoformat())
     findings: list[Finding] = field(default_factory=list)
     passed: bool = False
 
@@ -104,6 +103,7 @@ def _check(fn: CheckFn) -> CheckFn:
 # G1 — Zero Failure
 # ---------------------------------------------------------------------------
 
+
 @_check
 def check_g1_no_bare_except(root: Path, report: ValidationReport, fix: bool) -> None:
     """G1: Python files must not use bare `except:` clauses."""
@@ -112,12 +112,14 @@ def check_g1_no_bare_except(root: Path, report: ValidationReport, fix: bool) -> 
         for i, line in enumerate(source.splitlines(), 1):
             stripped = line.strip()
             if stripped == "except:" or stripped.startswith("except :"):
-                report.add(Finding(
-                    gate="G1",
-                    severity="ERROR",
-                    path=str(pyfile.relative_to(root)),
-                    message=f"Line {i}: bare `except:` clause found — use `except Exception:`",
-                ))
+                report.add(
+                    Finding(
+                        gate="G1",
+                        severity="ERROR",
+                        path=str(pyfile.relative_to(root)),
+                        message=f"Line {i}: bare `except:` clause found — use `except Exception:`",
+                    )
+                )
 
 
 @_check
@@ -135,20 +137,30 @@ def check_g1_sys_exit_in_library(root: Path, report: ValidationReport, fix: bool
             if re.match(r"^(def |class |if __name__)", stripped):
                 in_block = True
             # A non-empty, unindented line that isn't a definition resets block tracking
-            if line and not line[0].isspace() and not re.match(r"^(def |class |if |@|#|[\"'])", line):
+            if (
+                line
+                and not line[0].isspace()
+                and not re.match(r"^(def |class |if |@|#|[\"'])", line)
+            ):
                 in_block = False
             if not in_block and "sys.exit(" in line and not stripped.startswith("#"):
-                report.add(Finding(
-                    gate="G1",
-                    severity="WARNING",
-                    path=str(pyfile.relative_to(root)),
-                    message=f"Line {i}: `sys.exit()` called at module scope — move inside a function",
-                ))
+                report.add(
+                    Finding(
+                        gate="G1",
+                        severity="WARNING",
+                        path=str(pyfile.relative_to(root)),
+                        message=(
+                            f"Line {i}: `sys.exit()` called at module scope"
+                            " — move inside a function"
+                        ),
+                    )
+                )
 
 
 # ---------------------------------------------------------------------------
 # G2 — Zero Tech Debt
 # ---------------------------------------------------------------------------
+
 
 @_check
 def check_g2_module_docstring(root: Path, report: ValidationReport, fix: bool) -> None:
@@ -165,20 +177,24 @@ def check_g2_module_docstring(root: Path, report: ValidationReport, fix: bool) -
         if not has_docstring:
             if fix:
                 _fix_add_docstring(pyfile, source)
-                report.add(Finding(
-                    gate="G2",
-                    severity="WARNING",
-                    path=str(pyfile.relative_to(root)),
-                    message="Missing module docstring — stub inserted by auto-fix",
-                    auto_fixed=True,
-                ))
+                report.add(
+                    Finding(
+                        gate="G2",
+                        severity="WARNING",
+                        path=str(pyfile.relative_to(root)),
+                        message="Missing module docstring — stub inserted by auto-fix",
+                        auto_fixed=True,
+                    )
+                )
             else:
-                report.add(Finding(
-                    gate="G2",
-                    severity="ERROR",
-                    path=str(pyfile.relative_to(root)),
-                    message="Missing module-level docstring",
-                ))
+                report.add(
+                    Finding(
+                        gate="G2",
+                        severity="ERROR",
+                        path=str(pyfile.relative_to(root)),
+                        message="Missing module-level docstring",
+                    )
+                )
 
 
 @_check
@@ -189,53 +205,63 @@ def check_g2_version_string(root: Path, report: ValidationReport, fix: bool) -> 
         if "__version__" not in source:
             if fix:
                 _fix_add_version(pyfile, source)
-                report.add(Finding(
-                    gate="G2",
-                    severity="WARNING",
-                    path=str(pyfile.relative_to(root)),
-                    message="Missing __version__ — set to '0.0.1-auto' by auto-fix",
-                    auto_fixed=True,
-                ))
+                report.add(
+                    Finding(
+                        gate="G2",
+                        severity="WARNING",
+                        path=str(pyfile.relative_to(root)),
+                        message="Missing __version__ — set to '0.0.1-auto' by auto-fix",
+                        auto_fixed=True,
+                    )
+                )
             else:
-                report.add(Finding(
-                    gate="G2",
-                    severity="ERROR",
-                    path=str(pyfile.relative_to(root)),
-                    message="Missing __version__ declaration",
-                ))
+                report.add(
+                    Finding(
+                        gate="G2",
+                        severity="ERROR",
+                        path=str(pyfile.relative_to(root)),
+                        message="Missing __version__ declaration",
+                    )
+                )
 
 
 # ---------------------------------------------------------------------------
 # G3 — Governance First
 # ---------------------------------------------------------------------------
 
+
 @_check
 def check_g3_governance_file(root: Path, report: ValidationReport, fix: bool) -> None:
     """G3: Repository must contain GOVERNANCE.md."""
     if not (root / "GOVERNANCE.md").exists():
-        report.add(Finding(
-            gate="G3",
-            severity="ERROR",
-            path="GOVERNANCE.md",
-            message="GOVERNANCE.md is missing — all governance gates will fail",
-        ))
+        report.add(
+            Finding(
+                gate="G3",
+                severity="ERROR",
+                path="GOVERNANCE.md",
+                message="GOVERNANCE.md is missing — all governance gates will fail",
+            )
+        )
 
 
 @_check
 def check_g3_readme_exists(root: Path, report: ValidationReport, fix: bool) -> None:
     """G3: Repository must contain a top-level README.md."""
     if not (root / "README.md").exists():
-        report.add(Finding(
-            gate="G3",
-            severity="ERROR",
-            path="README.md",
-            message="README.md is missing",
-        ))
+        report.add(
+            Finding(
+                gate="G3",
+                severity="ERROR",
+                path="README.md",
+                message="README.md is missing",
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
 # G4 — Traceability
 # ---------------------------------------------------------------------------
+
 
 @_check
 def check_g4_seed_id_header(root: Path, report: ValidationReport, fix: bool) -> None:
@@ -245,20 +271,24 @@ def check_g4_seed_id_header(root: Path, report: ValidationReport, fix: bool) -> 
         if "SEED_ID" not in source:
             if fix:
                 _fix_add_seed_id(pyfile, source)
-                report.add(Finding(
-                    gate="G4",
-                    severity="WARNING",
-                    path=str(pyfile.relative_to(root)),
-                    message="Missing SEED_ID — set to 'SEED-UNKNOWN' by auto-fix",
-                    auto_fixed=True,
-                ))
+                report.add(
+                    Finding(
+                        gate="G4",
+                        severity="WARNING",
+                        path=str(pyfile.relative_to(root)),
+                        message="Missing SEED_ID — set to 'SEED-UNKNOWN' by auto-fix",
+                        auto_fixed=True,
+                    )
+                )
             else:
-                report.add(Finding(
-                    gate="G4",
-                    severity="ERROR",
-                    path=str(pyfile.relative_to(root)),
-                    message="Missing SEED_ID traceability marker",
-                ))
+                report.add(
+                    Finding(
+                        gate="G4",
+                        severity="ERROR",
+                        path=str(pyfile.relative_to(root)),
+                        message="Missing SEED_ID traceability marker",
+                    )
+                )
 
 
 @_check
@@ -266,17 +296,20 @@ def check_g4_manifest_exists(root: Path, report: ValidationReport, fix: bool) ->
     """G4: The seed manifest must exist."""
     manifest_path = root / "src" / "discovery" / "manifest.json"
     if not manifest_path.exists():
-        report.add(Finding(
-            gate="G4",
-            severity="ERROR",
-            path="src/discovery/manifest.json",
-            message="Seed manifest (manifest.json) is missing",
-        ))
+        report.add(
+            Finding(
+                gate="G4",
+                severity="ERROR",
+                path="src/discovery/manifest.json",
+                message="Seed manifest (manifest.json) is missing",
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
 # G5 — Scalability Hook
 # ---------------------------------------------------------------------------
+
 
 @_check
 def check_g5_public_interface(root: Path, report: ValidationReport, fix: bool) -> None:
@@ -287,21 +320,27 @@ def check_g5_public_interface(root: Path, report: ValidationReport, fix: bool) -
         source = pyfile.read_text(encoding="utf-8", errors="replace")
         # Check for `def main(` — the standard scalability hook
         if "def main(" not in source:
-            report.add(Finding(
-                gate="G5",
-                severity="WARNING",
-                path=str(pyfile.relative_to(root)),
-                message="No `main()` entry point found — module lacks a scalability hook",
-            ))
+            report.add(
+                Finding(
+                    gate="G5",
+                    severity="WARNING",
+                    path=str(pyfile.relative_to(root)),
+                    message="No `main()` entry point found — module lacks a scalability hook",
+                )
+            )
 
 
 # ---------------------------------------------------------------------------
 # Auto-fix helpers
 # ---------------------------------------------------------------------------
 
+
 def _fix_add_docstring(pyfile: Path, source: str) -> None:
     """Insert a stub module docstring at the top of the file."""
-    stub = f'"""\n{pyfile.stem} — auto-generated stub docstring.\nSEED_ID: SEED-UNKNOWN\nProtocol: 110%\n"""\n\n'
+    stub = (
+        f'"""\n{pyfile.stem} — auto-generated stub docstring.\n'
+        'SEED_ID: SEED-UNKNOWN\nProtocol: 110%\n"""\n\n'
+    )
     pyfile.write_text(stub + source, encoding="utf-8")
     log.info("Auto-fix [G2]: added docstring stub to %s", pyfile)
 
@@ -309,6 +348,7 @@ def _fix_add_docstring(pyfile: Path, source: str) -> None:
 def _fix_add_version(pyfile: Path, source: str) -> None:
     """Insert a __version__ declaration after the module docstring (if any)."""
     import ast as _ast
+
     version_line = "\n__version__ = '0.0.1-auto'\n"
     insert_pos = 0
     try:
@@ -323,7 +363,7 @@ def _fix_add_version(pyfile: Path, source: str) -> None:
             doc_node = tree.body[0]
             end_line = doc_node.end_lineno  # type: ignore[attr-defined]
             lines = source.splitlines(keepends=True)
-            insert_pos = sum(len(l) for l in lines[:end_line])
+            insert_pos = sum(len(line) for line in lines[:end_line])
     except SyntaxError:
         pass  # Fall back to inserting at the top
     new_source = source[:insert_pos] + version_line + source[insert_pos:]
@@ -350,6 +390,7 @@ def _fix_add_seed_id(pyfile: Path, source: str) -> None:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _iter_python_files(root: Path):
     """Yield Python source files, excluding hidden dirs and common noise."""
     for pyfile in root.rglob("*.py"):
@@ -364,6 +405,7 @@ def _iter_python_files(root: Path):
 # ---------------------------------------------------------------------------
 # Main validation runner
 # ---------------------------------------------------------------------------
+
 
 def validate(root: Path, fix: bool = False) -> ValidationReport:
     """Run all registered checks against the given root directory.
@@ -399,6 +441,7 @@ def validate(root: Path, fix: bool = False) -> ValidationReport:
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

@@ -22,7 +22,6 @@ import argparse
 import hashlib
 import json
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -77,7 +76,9 @@ def rule_missing_readme(root: Path) -> list[dict]:
             gaps.append(
                 {
                     "gate": "G2",
-                    "description": f"Directory '{dirpath.relative_to(root)}' has no README or __init__",
+                    "description": (
+                        f"Directory '{dirpath.relative_to(root)}' has no README or __init__"
+                    ),
                     "path": str(dirpath.relative_to(root)),
                 }
             )
@@ -97,7 +98,9 @@ def rule_missing_docstrings(root: Path) -> list[dict]:
             gaps.append(
                 {
                     "gate": "G2",
-                    "description": f"Python file '{pyfile.relative_to(root)}' lacks a module docstring",
+                    "description": (
+                        f"Python file '{pyfile.relative_to(root)}' lacks a module docstring"
+                    ),
                     "path": str(pyfile.relative_to(root)),
                 }
             )
@@ -116,7 +119,9 @@ def rule_missing_seed_id(root: Path) -> list[dict]:
             gaps.append(
                 {
                     "gate": "G4",
-                    "description": f"Python file '{pyfile.relative_to(root)}' is missing a SEED_ID marker",
+                    "description": (
+                        f"Python file '{pyfile.relative_to(root)}' is missing a SEED_ID marker"
+                    ),
                     "path": str(pyfile.relative_to(root)),
                 }
             )
@@ -142,6 +147,7 @@ def rule_missing_governance(root: Path) -> list[dict]:
 # Manifest helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_manifest(manifest_path: Path) -> dict:
     if manifest_path.exists():
         return json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -156,15 +162,13 @@ def _save_manifest(manifest_path: Path, manifest: dict) -> None:
 
 
 def _seed_exists(seeds: list[dict], path: str, gate: str) -> bool:
-    return any(
-        s.get("path") == path and s.get("gate") == gate
-        for s in seeds
-    )
+    return any(s.get("path") == path and s.get("gate") == gate for s in seeds)
 
 
 # ---------------------------------------------------------------------------
 # Main scan logic
 # ---------------------------------------------------------------------------
+
 
 def scan(root: Path, manifest_path: Path) -> int:
     """Run all gap-detection rules and update the manifest.
@@ -187,9 +191,8 @@ def scan(root: Path, manifest_path: Path) -> int:
             if _seed_exists(seeds, gap["path"], gap["gate"]):
                 continue  # already tracked
             seed = {
-                "id": "SEED-" + hashlib.sha1(
-                    f"{gap['gate']}:{gap['path']}".encode()
-                ).hexdigest()[:8].upper(),
+                "id": "SEED-"
+                + hashlib.sha1(f"{gap['gate']}:{gap['path']}".encode()).hexdigest()[:8].upper(),
                 "gate": gap["gate"],
                 "status": "IDENTIFIED",
                 "description": gap["description"],
@@ -209,6 +212,7 @@ def scan(root: Path, manifest_path: Path) -> int:
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

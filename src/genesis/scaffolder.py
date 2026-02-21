@@ -22,13 +22,11 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from string import Template
-from typing import Any
 
 __version__ = "1.0.0"
 
@@ -71,13 +69,12 @@ def _select_template(seed: dict) -> str:
 # Template loading & rendering
 # ---------------------------------------------------------------------------
 
+
 def _load_template_manifest(template_name: str) -> dict:
     """Load the template's manifest.json describing the files to generate."""
     manifest_path = _TEMPLATES_DIR / template_name / "template_manifest.json"
     if not manifest_path.exists():
-        raise FileNotFoundError(
-            f"Template manifest not found: {manifest_path}"
-        )
+        raise FileNotFoundError(f"Template manifest not found: {manifest_path}")
     return json.loads(manifest_path.read_text(encoding="utf-8"))
 
 
@@ -112,6 +109,7 @@ def _build_variables(seed: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Scaffolding
 # ---------------------------------------------------------------------------
+
 
 def scaffold(seed: dict, output_dir: Path) -> list[Path]:
     """Scaffold a project for the given seed into output_dir.
@@ -154,6 +152,7 @@ def scaffold(seed: dict, output_dir: Path) -> list[Path]:
 # Manifest helpers
 # ---------------------------------------------------------------------------
 
+
 def _load_manifest(manifest_path: Path) -> dict:
     if not manifest_path.exists():
         raise FileNotFoundError(f"Manifest not found: {manifest_path}")
@@ -182,6 +181,7 @@ def _update_seed_status(manifest_path: Path, seed_id: str, status: str) -> None:
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
