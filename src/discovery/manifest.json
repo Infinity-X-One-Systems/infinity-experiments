@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "last_scan": null,
+  "seeds": [
+    {
+      "id": "SEED-001",
+      "gate": "G1",
+      "status": "COMPLETE",
+      "description": "Bootstrap the Infinity Invention Machine MVP foundation",
+      "path": ".",
+      "discovered_at": "2026-02-20T20:00:00+00:00",
+      "updated_at": "2026-02-20T20:42:01.357078+00:00"
+    }
+  ]
+}

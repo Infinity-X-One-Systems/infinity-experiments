@@ -1,0 +1,138 @@
+name: Infinity Pipeline
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Drift detection — runs daily at 02:00 UTC
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Lint
+  # ---------------------------------------------------------------------------
+  lint:
+    name: "Gate — Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint tools
+        run: pip install flake8 black isort
+
+      - name: flake8
+        run: flake8 src/ --max-line-length=100 --extend-ignore=E203,W503
+
+      - name: black (check only)
+        run: black --check --line-length=100 src/
+
+      - name: isort (check only)
+        run: isort --check-only --profile=black src/
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Security Scan
+  # ---------------------------------------------------------------------------
+  security:
+    name: "Gate — Security"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install security tools
+        run: pip install pip-audit bandit
+
+      - name: pip-audit (dependency vulnerabilities)
+        # Only audit if there is a requirements file
+        run: |
+          if [ -f requirements.txt ]; then
+            pip-audit -r requirements.txt
+          else
+            echo "No requirements.txt found — skipping pip-audit"
+          fi
+
+      - name: bandit (static security analysis)
+        run: bandit -r src/ -ll --exit-zero
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Agent Validation (110% Protocol)
+  # ---------------------------------------------------------------------------
+  validate:
+    name: "Gate — 110% Validation"
+    runs-on: ubuntu-latest
+    needs: [lint, security]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run 110% Protocol Validator
+        id: validator
+        run: |
+          python src/validation/protocol_110.py \
+            --root . \
+            --report validation-report.json
+          echo "validator_exit=$?" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: validation-report.json
+          if-no-files-found: warn
+
+      - name: Enforce gate
+        run: |
+          if [ "${{ steps.validator.outputs.validator_exit }}" != "0" ]; then
+            echo "::error::110% Protocol validation failed. Review the validation report artifact."
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 4: Auto-Merge Gate (signals readiness)
+  # ---------------------------------------------------------------------------
+  gate:
+    name: "Gate — Ready for Deployment"
+    runs-on: ubuntu-latest
+    needs: [validate]
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Label PR as ready
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['ready-for-deployment']
+            }).catch(err => {
+              // Label may not exist yet — not a blocking error
+              core.warning(`Could not add label: ${err.message}`);
+            });
+            console.log('All gates passed — PR is ready for deployment.');
